@@ -87,6 +87,12 @@ textarea { resize: vertical; min-height: 80px; }
 .banner-ok { background: #e8f5e9; color: #2e7d32; }
 .banner-issue { background: #fdecea; color: #c62828; }
 .section-title { font-size: 14px; font-weight: 600; margin-bottom: .85rem; color: #444; }
+.badge-new { background: #e3f2fd; color: #1565c0; }
+.badge-internal { background: #fff3e0; color: #e65100; }
+.badge-company { background: #f3e5f5; color: #6a1b9a; }
+.badge-resolved-prog { background: #e8f5e9; color: #2e7d32; }
+.admin-report-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; flex-shrink: 0; }
+.eta-display { font-size: 11px; color: #888; margin-top: 3px; }
 </style>
 </head>
 <body>
@@ -138,11 +144,20 @@ textarea { resize: vertical; min-height: 80px; }
   </div>
 
   <div id="tab-history" class="section">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem;gap:8px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem;gap:8px;flex-wrap:wrap">
       <div class="section-title" style="margin-bottom:0">All reports</div>
-      <select id="filter-status" onchange="renderReports()" style="font-size:13px;width:auto;padding:4px 8px">
-        <option value="all">All</option><option value="open">Open</option><option value="resolved">Resolved</option>
-      </select>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <select id="filter-status" onchange="renderReports()" style="font-size:13px;width:auto;padding:4px 8px">
+          <option value="all">All</option><option value="open">Open</option><option value="resolved">Resolved</option>
+        </select>
+        <select id="filter-progress" onchange="renderReports()" style="font-size:13px;width:auto;padding:4px 8px">
+          <option value="all">All progress</option>
+          <option value="new">New</option>
+          <option value="in_progress_internal">In progress &#8211; Internal</option>
+          <option value="in_progress_company">In progress &#8211; Company</option>
+          <option value="resolved_progress">Resolved</option>
+        </select>
+      </div>
     </div>
     <div id="report-list" class="report-list"><div class="loading"><span class="spinner"></span> Loading…</div></div>
   </div>
@@ -358,31 +373,69 @@ function renderReportForm() {
   document.getElementById('rep-inst').innerHTML = html;
 }
 
+function progressLabel(p) {
+  const map = {
+    new: ['New', 'badge-new'],
+    in_progress_internal: ['In progress \u2013 Internal', 'badge-internal'],
+    in_progress_company: ['In progress \u2013 Company', 'badge-company'],
+    resolved_progress: ['Resolved', 'badge-resolved-prog']
+  };
+  const [label, cls] = map[p] || ['New', 'badge-new'];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
 function renderReports() {
-  const filter = document.getElementById('filter-status').value;
-  let list = filter==='all' ? reports : reports.filter(r=>r.status===filter);
+  const filterStatus = document.getElementById('filter-status').value;
+  const filterProgress = document.getElementById('filter-progress').value;
+  let list = reports;
+  if (filterStatus !== 'all') list = list.filter(r => r.status === filterStatus);
+  if (filterProgress !== 'all') list = list.filter(r => (r.progress || 'new') === filterProgress);
   const el = document.getElementById('report-list');
-  if (!list.length) { el.innerHTML='<div class="empty">No reports found</div>'; return; }
+  if (!list.length) { el.innerHTML = '<div class="empty">No reports found</div>'; return; }
   const all = allInstruments();
   el.innerHTML = list.map(r => {
-    const inst = all.find(i=>i.id===r.instrument_id);
-    const sev = {high:'sev-high',medium:'sev-medium',low:'sev-low'}[r.severity]||'';
+    const inst = all.find(i => i.id === r.instrument_id);
+    const sev = {high:'sev-high',medium:'sev-medium',low:'sev-low'}[r.severity] || '';
     const date = new Date(r.ts).toLocaleDateString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    const prog = r.progress || 'new';
+    const eta = r.eta ? new Date(r.eta).toLocaleDateString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : null;
+    const adminControls = adminUnlocked ? `
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+        <div style="flex:1;min-width:160px">
+          <label style="font-size:11px;color:#888;margin-bottom:3px;display:block">Progress</label>
+          <select style="font-size:12px;padding:4px 7px;border-radius:6px;width:100%" onchange="updateReportProgress('${r.id}',this.value)">
+            <option value="new"${prog==='new'?' selected':''}>New</option>
+            <option value="in_progress_internal"${prog==='in_progress_internal'?' selected':''}>In progress \u2013 Internal</option>
+            <option value="in_progress_company"${prog==='in_progress_company'?' selected':''}>In progress \u2013 Company</option>
+            <option value="resolved_progress"${prog==='resolved_progress'?' selected':''}>Resolved</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:180px">
+          <label style="font-size:11px;color:#888;margin-bottom:3px;display:block">Est. resolution time</label>
+          <input type="datetime-local" style="font-size:12px;padding:4px 7px;border-radius:6px;width:100%" value="${r.eta ? r.eta.slice(0,16) : ''}" onchange="updateReportEta('${r.id}',this.value)">
+        </div>
+        ${r.status==='open'?`<button class="btn btn-sm" style="flex-shrink:0" onclick="resolveReport('${r.id}','${r.instrument_id}')">Resolve</button>`:''}
+      </div>` : '';
     return `<div class="report-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div style="min-width:0;flex:1">
-          <div style="font-size:13px;font-weight:600">${inst?inst.name:'Unknown instrument'}</div>
+          <div style="font-size:13px;font-weight:600">${inst ? inst.name : 'Unknown instrument'}</div>
           <div style="font-size:11px;color:#888;margin-top:2px">
-            ${inst?`<span class="loc-pill">${inst.locationName}</span> `:''}${date}${r.reporter?' · '+r.reporter:''} · <span class="${sev}">${r.severity} severity</span>
+            ${inst ? `<span class="loc-pill">${inst.locationName}</span> ` : ''}${date}${r.reporter ? ' \u00b7 ' + r.reporter : ''} \u00b7 <span class="${sev}">${r.severity} severity</span>
+          </div>
+          <div style="margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            ${progressLabel(prog)}
+            ${eta ? `<span class="eta-display">🕐 ETA: ${eta}</span>` : ''}
           </div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
           <span class="badge ${r.status==='open'?'badge-issue':'badge-ok'}">${r.status}</span>
-          ${r.status==='open'?`<button class="btn btn-sm" onclick="resolveReport('${r.id}','${r.instrument_id}')">Resolve</button>`:''}
+          ${!adminUnlocked && r.status==='open' ? `<button class="btn btn-sm" onclick="resolveReport('${r.id}','${r.instrument_id}')">Resolve</button>` : ''}
         </div>
       </div>
       <div style="font-size:13px;color:#555;margin-top:8px;line-height:1.5">${r.description}</div>
-      ${r.image_url?`<img class="report-img" src="${r.image_url}" alt="Report photo" onclick="openLightbox('${r.image_url}')">` : ''}
+      ${r.image_url ? `<img class="report-img" src="${r.image_url}" alt="Report photo" onclick="openLightbox('${r.image_url}')">` : ''}
+      ${adminControls}
     </div>`;
   }).join('');
 }
@@ -439,7 +492,7 @@ async function submitReport() {
     }
     await sb('reports', {
       method: 'POST', prefer: 'return=minimal',
-      body: JSON.stringify({id:'r'+Date.now(), instrument_id, severity, description, reporter, status:'open', image_url})
+      body: JSON.stringify({id:'r'+Date.now(), instrument_id, severity, description, reporter, status:'open', image_url, progress:'new'})
     });
     if (severity==='high'||severity==='medium') await setStatus(instrument_id, 'issue');
     document.getElementById('rep-desc').value = '';
@@ -453,6 +506,23 @@ async function submitReport() {
     document.querySelectorAll('.tab')[0].click();
   } catch(e) { showToast('Error: ' + e.message); }
   btn.disabled = false; btn.textContent = 'Submit report';
+}
+
+async function updateReportProgress(id, progress) {
+  await sb(`reports?id=eq.${id}`, {method:'PATCH', prefer:'return=minimal', body:JSON.stringify({progress})});
+  const r = reports.find(r => r.id === id);
+  if (r) r.progress = progress;
+  renderReports();
+  showToast('Progress updated ✓');
+}
+
+async function updateReportEta(id, eta) {
+  const val = eta ? new Date(eta).toISOString() : null;
+  await sb(`reports?id=eq.${id}`, {method:'PATCH', prefer:'return=minimal', body:JSON.stringify({eta: val})});
+  const r = reports.find(r => r.id === id);
+  if (r) r.eta = val;
+  renderReports();
+  showToast('ETA updated ✓');
 }
 
 async function resolveReport(id, instrument_id) {
@@ -481,6 +551,7 @@ function checkPin() {
     document.getElementById('pin-error').style.display='none';
     document.getElementById('pin-input').value='';
     renderAdminPanel();
+    if(document.querySelector('#tab-history.active')) renderReports();
   } else {
     document.getElementById('pin-error').style.display='block';
     document.getElementById('pin-input').value='';
@@ -490,6 +561,7 @@ function lockAdmin() {
   adminUnlocked=false;
   document.getElementById('pin-screen').style.display='block';
   document.getElementById('admin-panel').style.display='none';
+  if(document.querySelector('#tab-history.active')) renderReports();
 }
 
 function openEditInstModal(id) {
