@@ -430,7 +430,6 @@ function renderReports() {
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
           <span class="badge ${r.status==='open'?'badge-issue':'badge-ok'}">${r.status}</span>
-          ${!adminUnlocked && r.status==='open' ? `<button class="btn btn-sm" onclick="resolveReport('${r.id}','${r.instrument_id}')">Resolve</button>` : ''}
         </div>
       </div>
       <div style="font-size:13px;color:#555;margin-top:8px;line-height:1.5">${r.description}</div>
