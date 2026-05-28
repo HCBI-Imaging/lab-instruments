@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>HCBI Microscope Cleaning Log</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f7f6f3;
+  --surface: #ffffff;
+  --border: #e8e6e0;
+  --border-strong: #d0cdc5;
+  --text: #1c1b18;
+  --text-muted: #8a8780;
+  --text-light: #b5b2aa;
+  --accent: #2d6a4f;
+  --accent-light: #e8f4ee;
+  --accent-muted: #74b89a;
+  --warn: #c0392b;
+  --warn-light: #fdf0ee;
+  --gold: #b5830a;
+  --gold-light: #fdf6e3;
+  --radius: 10px;
+  --shadow: 0 1px 4px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: .9rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.logo { font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+.logo-sub { font-size: 11px; font-weight: 400; color: var(--text-muted); display: block; margin-top: 1px; font-family: 'DM Mono', monospace; letter-spacing: .04em; }
+.header-right { display: flex; align-items: center; gap: 8px; }
+
+/* ── TABS ── */
+main { max-width: 680px; margin: 0 auto; padding: 1.1rem 1rem 4rem; }
+.tab-bar { display: flex; gap: 6px; margin-bottom: 1.25rem; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; }
+.tab { flex: 1; padding: 7px 10px; border-radius: 7px; border: none; background: transparent; cursor: pointer; font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500; color: var(--text-muted); transition: all .15s; text-align: center; }
+.tab.active { background: var(--text); color: #fff; }
+
+/* ── CARDS ── */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; margin-bottom: 10px; box-shadow: var(--shadow); }
+.section { display: none; }
+.section.active { display: block; }
+
+/* ── METRICS ── */
+.metric-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 1rem; }
+.metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .85rem; text-align: center; box-shadow: var(--shadow); }
+.metric-val { font-size: 26px; font-weight: 600; font-family: 'DM Mono', monospace; line-height: 1; }
+.metric-lbl { font-size: 10px; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: .06em; }
+
+/* ── FORM ── */
+.form-group { margin-bottom: .85rem; }
+label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .05em; }
+input, select, textarea {
+  width: 100%; font-size: 14px; font-family: 'DM Sans', sans-serif;
+  padding: 9px 11px; border: 1px solid var(--border-strong);
+  border-radius: 8px; background: var(--bg); color: var(--text); outline: none;
+  transition: border-color .15s, background .15s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); background: #fff; }
+textarea { resize: vertical; min-height: 80px; }
+
+/* ── CHECKLIST ── */
+.checklist { display: flex; flex-direction: column; gap: 6px; }
+.check-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 11px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--bg);
+  cursor: pointer; transition: all .15s; user-select: none;
+}
+.check-item.checked { border-color: var(--accent-muted); background: var(--accent-light); }
+.check-item input[type="checkbox"] { display: none; }
+.check-box {
+  width: 18px; height: 18px; border-radius: 5px;
+  border: 2px solid var(--border-strong); background: #fff;
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.check-item.checked .check-box { background: var(--accent); border-color: var(--accent); }
+.check-box::after { content: '✓'; color: #fff; font-size: 11px; font-weight: 700; opacity: 0; transition: opacity .1s; }
+.check-item.checked .check-box::after { opacity: 1; }
+.check-label { font-size: 13px; font-weight: 500; }
+.check-all-btn { font-size: 12px; color: var(--accent); background: none; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 600; padding: 0; margin-bottom: 6px; }
+
+/* ── BUTTONS ── */
+.btn { padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-strong); font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; color: var(--text); background: var(--surface); transition: background .15s; }
+.btn:hover { background: var(--bg); }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); width: 100%; padding: 12px; font-size: 14px; margin-top: 4px; }
+.btn-primary:hover { background: #235c41; }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.btn-danger { border-color: var(--warn); color: var(--warn); }
+.btn-danger:hover { background: var(--warn-light); }
+
+/* ── LOG ENTRIES ── */
+.log-entry { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; margin-bottom: 10px; box-shadow: var(--shadow); }
+.log-entry-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.log-scope { font-size: 15px; font-weight: 600; }
+.log-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; font-family: 'DM Mono', monospace; }
+.log-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+.badge-full { background: var(--accent-light); color: var(--accent); }
+.badge-partial { background: var(--gold-light); color: var(--gold); }
+.checklist-summary { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.chip { padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+.chip-done { background: var(--accent-light); color: var(--accent); }
+.chip-skip { background: #f0f0ee; color: var(--text-muted); text-decoration: line-through; }
+.log-notes { font-size: 13px; color: #555; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); line-height: 1.55; }
+
+/* ── PIN / ADMIN ── */
+.pin-screen { text-align: center; padding: 2.5rem 1rem; }
+.pin-title { font-size: 17px; font-weight: 600; margin-bottom: .4rem; }
+.pin-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 1.5rem; }
+.pin-input { text-align: center; font-size: 28px; letter-spacing: .4em; font-family: 'DM Mono', monospace; width: 160px; margin: 0 auto 1rem; display: block; border-radius: 10px; }
+.pin-error { color: var(--warn); font-size: 13px; margin-bottom: .75rem; display: none; }
+.admin-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+.admin-section-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+
+/* ── SCOPE LIST (admin) ── */
+.scope-item { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.scope-item:last-child { border-bottom: none; }
+.scope-name { flex: 1; font-size: 13px; font-weight: 500; }
+.scope-room { font-size: 11px; color: var(--text-muted); }
+
+/* ── CHECKLIST ITEMS ADMIN ── */
+.check-item-admin { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+.check-item-admin:last-child { border-bottom: none; }
+.check-item-name { flex: 1; font-size: 13px; }
+
+/* ── EMPTY / TOAST / SPINNER ── */
+.empty { text-align: center; padding: 2rem 1rem; color: var(--text-muted); font-size: 13px; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #ddd; border-top-color: #555; border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--text); color: #fff; padding: 10px 20px; border-radius: 24px; font-size: 13px; font-weight: 500; z-index: 999; transition: transform .3s ease; pointer-events: none; white-space: nowrap; }
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── SECTION HEADER ── */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .85rem; flex-wrap: wrap; gap: 8px; }
+.section-title { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+
+/* ── DIVIDER ── */
+.divider { height: 1px; background: var(--border); margin: 1.1rem 0; }
+
+/* ── FILTER BAR ── */
+.filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
+.filter-bar select { width: auto; font-size: 12px; padding: 5px 9px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">🔬 Cleaning Log</div>
+    <span class="logo-sub">HCBI IMAGING FACILITY</span>
+  </div>
+  <div class="header-right">
+    <span id="admin-indicator" style="display:none;font-size:11px;font-family:'DM Mono',monospace;color:var(--accent);font-weight:600;background:var(--accent-light);padding:3px 9px;border-radius:20px;">ADMIN</span>
+    <button class="btn btn-sm" id="lock-btn" style="display:none" onclick="lockAdmin()">Lock</button>
+  </div>
+</header>
+
+<main>
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <button class="tab active" id="tab-log" onclick="switchTab('log')">Log Cleaning</button>
+    <button class="tab" id="tab-history" onclick="switchTab('history')">History</button>
+    <button class="tab" id="tab-admin" onclick="switchTab('admin')">Admin</button>
+  </div>
+
+  <!-- ══ LOG CLEANING TAB ══ -->
+  <div class="section active" id="section-log">
+    <div class="card">
+      <div class="form-group">
+        <label>Microscope</label>
+        <select id="log-scope">
+          <option value="">— Select microscope —</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Cleaned by</label>
+        <input type="text" id="log-cleaner" placeholder="Your name">
+      </div>
+      <div class="form-group">
+        <label>Date &amp; Time</label>
+        <input type="datetime-local" id="log-datetime">
+      </div>
+      <div class="divider"></div>
+      <div class="form-group">
+        <label>Cleaning Checklist</label>
+        <button class="check-all-btn" onclick="checkAll()">Select all</button>
+        <div class="checklist" id="log-checklist">
+          <div class="empty" style="padding:.5rem 0">No checklist items yet — add them in Admin.</div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="form-group">
+        <label>Notes / Comments</label>
+        <textarea id="log-notes" placeholder="Any observations, issues, or additional details…"></textarea>
+      </div>
+      <button class="btn btn-primary" id="submit-btn" onclick="submitLog()">Submit Cleaning Log</button>
+    </div>
+  </div>
+
+  <!-- ══ HISTORY TAB ══ -->
+  <div class="section" id="section-history">
+    <div class="metric-row" id="metrics-row">
+      <div class="metric"><div class="metric-val" id="m-total">—</div><div class="metric-lbl">Total Logs</div></div>
+      <div class="metric"><div class="metric-val" id="m-week">—</div><div class="metric-lbl">This Week</div></div>
+      <div class="metric"><div class="metric-val" id="m-scopes">—</div><div class="metric-lbl">Microscopes</div></div>
+    </div>
+    <div class="filter-bar">
+      <select id="filter-scope" onchange="renderHistory()" style="flex:1;min-width:140px">
+        <option value="all">All microscopes</option>
+      </select>
+      <select id="filter-period" onchange="renderHistory()" style="width:auto">
+        <option value="all">All time</option>
+        <option value="7">Last 7 days</option>
+        <option value="30">Last 30 days</option>
+        <option value="90">Last 90 days</option>
+      </select>
+    </div>
+    <div id="history-list"><div class="empty"><span class="spinner"></span> Loading…</div></div>
+  </div>
+
+  <!-- ══ ADMIN TAB ══ -->
+  <div class="section" id="section-admin">
+
+    <!-- PIN GATE -->
+    <div id="pin-screen" class="card pin-screen">
+      <div class="pin-title">Admin Access</div>
+      <div class="pin-sub">Enter your PIN to manage microscopes and checklist items.</div>
+      <input class="pin-input" type="password" inputmode="numeric" maxlength="6" id="pin-input" placeholder="••••" onkeydown="if(event.key==='Enter')checkPin()">
+      <div class="pin-error" id="pin-error">Incorrect PIN. Try again.</div>
+      <button class="btn btn-primary" style="max-width:200px;margin:0 auto" onclick="checkPin()">Unlock</button>
+    </div>
+
+    <!-- ADMIN PANEL -->
+    <div id="admin-panel" style="display:none">
+
+      <!-- Microscopes -->
+      <div class="card" style="margin-bottom:10px">
+        <div class="admin-bar">
+          <div class="admin-section-title">Microscopes</div>
+          <button class="btn btn-sm" onclick="showAddScope()">+ Add</button>
+        </div>
+        <div id="scope-list"><div class="empty" style="padding:.5rem 0">No microscopes added yet.</div></div>
+        <div id="add-scope-form" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input type="text" id="new-scope-name" placeholder="Microscope name" style="flex:1;min-width:140px">
+            <input type="text" id="new-scope-room" placeholder="Room / location" style="flex:1;min-width:120px">
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-primary" style="margin-top:0" onclick="addScope()">Add Microscope</button>
+            <button class="btn" onclick="hideAddScope()">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Checklist Items -->
+      <div class="card">
+        <div class="admin-bar">
+          <div class="admin-section-title">Checklist Items</div>
+          <button class="btn btn-sm" onclick="showAddCheckItem()">+ Add</button>
+        </div>
+        <div id="check-items-list"><div class="empty" style="padding:.5rem 0">No checklist items yet.</div></div>
+        <div id="add-check-item-form" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+          <input type="text" id="new-check-item" placeholder="e.g. Eyepieces, Objectives, Stage…">
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-primary" style="margin-top:0" onclick="addCheckItem()">Add Item</button>
+            <button class="btn" onclick="hideAddCheckItem()">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────
+const SUPABASE_URL  = 'https://psxxeflslqyyloxaicvo.supabase.co';
+const SUPABASE_KEY  = 'sb_publishable_Nc6iRHdZjvhd3YkxI2IRRQ_zuUQuwWH';
+const ADMIN_PIN     = '2010';
+
+// ── STATE ───────────────────────────────────────────────
+let adminUnlocked = false;
+let scopes        = [];   // microscopes
+let checkItems    = [];   // checklist items
+let logs          = [];   // cleaning logs
+
+// ── SUPABASE HELPER ─────────────────────────────────────
+async function sb(path, opts = {}) {
+  const headers = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_KEY,
+    'Content-Type': 'application/json',
+    ...(opts.prefer ? { 'Prefer': opts.prefer } : {})
+  };
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    method: opts.method || 'GET',
+    headers,
+    body: opts.body || undefined
+  });
+  if (opts.prefer === 'return=minimal') return null;
+  if (!res.ok) { const e = await res.text(); console.error(e); return null; }
+  return res.json();
+}
+
+// ── INIT ────────────────────────────────────────────────
+async function init() {
+  setDefaultDatetime();
+  await Promise.all([loadScopes(), loadCheckItems(), loadLogs()]);
+  renderLogForm();
+  renderHistory();
+}
+
+function setDefaultDatetime() {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('log-datetime').value = now.toISOString().slice(0, 16);
+}
+
+// ── LOAD DATA ───────────────────────────────────────────
+async function loadScopes() {
+  const data = await sb('cleaning_scopes?order=name.asc');
+  scopes = data || [];
+}
+
+async function loadCheckItems() {
+  const data = await sb('cleaning_check_items?order=sort_order.asc,name.asc');
+  checkItems = data || [];
+}
+
+async function loadLogs() {
+  const data = await sb('cleaning_logs?order=cleaned_at.desc&limit=200');
+  logs = data || [];
+}
+
+// ── RENDER LOG FORM ─────────────────────────────────────
+function renderLogForm() {
+  // Populate scope dropdown
+  const sel = document.getElementById('log-scope');
+  sel.innerHTML = '<option value="">— Select microscope —</option>';
+  scopes.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name + (s.room ? ` (${s.room})` : '');
+    sel.appendChild(opt);
+  });
+
+  // Render checklist
+  const cl = document.getElementById('log-checklist');
+  if (!checkItems.length) {
+    cl.innerHTML = '<div class="empty" style="padding:.5rem 0">No checklist items yet — add them in Admin.</div>';
+    return;
+  }
+  cl.innerHTML = checkItems.map(item => `
+    <label class="check-item" id="ci-${item.id}" onclick="toggleCheck('${item.id}')">
+      <input type="checkbox" id="chk-${item.id}">
+      <div class="check-box"></div>
+      <span class="check-label">${item.name}</span>
+    </label>
+  `).join('');
+}
+
+function toggleCheck(id) {
+  const el = document.getElementById(`ci-${id}`);
+  const chk = document.getElementById(`chk-${id}`);
+  chk.checked = !chk.checked;
+  el.classList.toggle('checked', chk.checked);
+}
+
+function checkAll() {
+  checkItems.forEach(item => {
+    const el = document.getElementById(`ci-${item.id}`);
+    const chk = document.getElementById(`chk-${item.id}`);
+    if (el && chk) { chk.checked = true; el.classList.add('checked'); }
+  });
+}
+
+// ── SUBMIT LOG ──────────────────────────────────────────
+async function submitLog() {
+  const scope_id   = document.getElementById('log-scope').value;
+  const cleaner    = document.getElementById('log-cleaner').value.trim();
+  const datetime   = document.getElementById('log-datetime').value;
+  const notes      = document.getElementById('log-notes').value.trim();
+
+  if (!scope_id) { showToast('Please select a microscope'); return; }
+  if (!cleaner)  { showToast('Please enter your name'); return; }
+  if (!datetime) { showToast('Please set date & time'); return; }
+
+  const checked_items = checkItems
+    .filter(item => document.getElementById(`chk-${item.id}`)?.checked)
+    .map(item => item.id);
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Saving…';
+
+  const payload = {
+    id: 'cl-' + Date.now(),
+    scope_id,
+    cleaner,
+    cleaned_at: new Date(datetime).toISOString(),
+    checked_items,
+    notes: notes || null
+  };
+
+  await sb('cleaning_logs', {
+    method: 'POST',
+    prefer: 'return=minimal',
+    body: JSON.stringify(payload)
+  });
+
+  logs.unshift(payload);
+  btn.disabled = false;
+  btn.textContent = 'Submit Cleaning Log';
+  showToast('✓ Cleaning log saved!');
+
+  // Reset form
+  document.getElementById('log-scope').value = '';
+  document.getElementById('log-cleaner').value = '';
+  document.getElementById('log-notes').value = '';
+  setDefaultDatetime();
+  checkItems.forEach(item => {
+    const el = document.getElementById(`ci-${item.id}`);
+    const chk = document.getElementById(`chk-${item.id}`);
+    if (el && chk) { chk.checked = false; el.classList.remove('checked'); }
+  });
+
+  renderHistory();
+}
+
+// ── RENDER HISTORY ───────────────────────────────────────
+function renderHistory() {
+  const filterScope  = document.getElementById('filter-scope').value;
+  const filterPeriod = document.getElementById('filter-period').value;
+
+  let list = [...logs];
+  if (filterScope !== 'all') list = list.filter(l => l.scope_id === filterScope);
+  if (filterPeriod !== 'all') {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - parseInt(filterPeriod));
+    list = list.filter(l => new Date(l.cleaned_at) >= cutoff);
+  }
+
+  // Update filter dropdown
+  const sel = document.getElementById('filter-scope');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="all">All microscopes</option>';
+  scopes.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id; opt.textContent = s.name;
+    sel.appendChild(opt);
+  });
+  sel.value = cur;
+
+  // Metrics
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+  document.getElementById('m-total').textContent  = logs.length;
+  document.getElementById('m-week').textContent   = logs.filter(l => new Date(l.cleaned_at) >= weekAgo).length;
+  document.getElementById('m-scopes').textContent = scopes.length;
+
+  const el = document.getElementById('history-list');
+  if (!list.length) { el.innerHTML = '<div class="empty">No cleaning logs found.</div>'; return; }
+
+  el.innerHTML = list.map(log => {
+    const scope = scopes.find(s => s.id === log.scope_id);
+    const date  = new Date(log.cleaned_at).toLocaleDateString(undefined, {
+      weekday: 'short', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+    const checked  = log.checked_items || [];
+    const total    = checkItems.length;
+    const isFull   = total > 0 && checked.length === total;
+    const badgeCls = isFull ? 'badge-full' : 'badge-partial';
+    const badgeTxt = total === 0 ? '' : isFull ? '✓ Full clean' : `${checked.length}/${total} items`;
+
+    const chips = checkItems.map(item => {
+      const done = checked.includes(item.id);
+      return `<span class="chip ${done ? 'chip-done' : 'chip-skip'}">${item.name}</span>`;
+    }).join('');
+
+    return `<div class="log-entry">
+      <div class="log-entry-header">
+        <div>
+          <div class="log-scope">${scope ? scope.name : 'Unknown'}</div>
+          <div class="log-meta">${date} · ${log.cleaner}${scope && scope.room ? ' · ' + scope.room : ''}</div>
+        </div>
+        ${total > 0 ? `<span class="log-badge ${badgeCls}">${badgeTxt}</span>` : ''}
+      </div>
+      ${checkItems.length ? `<div class="checklist-summary">${chips}</div>` : ''}
+      ${log.notes ? `<div class="log-notes">${log.notes}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── ADMIN / PIN ──────────────────────────────────────────
+function checkPin() {
+  const val = document.getElementById('pin-input').value.trim();
+  if (val === ADMIN_PIN) {
+    adminUnlocked = true;
+    document.getElementById('pin-screen').style.display  = 'none';
+    document.getElementById('admin-panel').style.display = 'block';
+    document.getElementById('pin-error').style.display   = 'none';
+    document.getElementById('pin-input').value           = '';
+    document.getElementById('admin-indicator').style.display = 'inline-flex';
+    document.getElementById('lock-btn').style.display        = 'inline-block';
+    renderAdminPanel();
+  } else {
+    document.getElementById('pin-error').style.display = 'block';
+    document.getElementById('pin-input').value = '';
+  }
+}
+
+function lockAdmin() {
+  adminUnlocked = false;
+  document.getElementById('pin-screen').style.display  = 'block';
+  document.getElementById('admin-panel').style.display = 'none';
+  document.getElementById('admin-indicator').style.display = 'none';
+  document.getElementById('lock-btn').style.display        = 'none';
+}
+
+// ── ADMIN RENDER ─────────────────────────────────────────
+function renderAdminPanel() {
+  renderScopeList();
+  renderCheckItemList();
+}
+
+function renderScopeList() {
+  const el = document.getElementById('scope-list');
+  if (!scopes.length) { el.innerHTML = '<div class="empty" style="padding:.5rem 0">No microscopes added yet.</div>'; return; }
+  el.innerHTML = scopes.map(s => `
+    <div class="scope-item">
+      <div>
+        <div class="scope-name">${s.name}</div>
+        ${s.room ? `<div class="scope-room">${s.room}</div>` : ''}
+      </div>
+      <button class="btn btn-sm btn-danger" onclick="deleteScope('${s.id}')">Remove</button>
+    </div>
+  `).join('');
+}
+
+function renderCheckItemList() {
+  const el = document.getElementById('check-items-list');
+  if (!checkItems.length) { el.innerHTML = '<div class="empty" style="padding:.5rem 0">No checklist items yet.</div>'; return; }
+  el.innerHTML = checkItems.map((item, idx) => `
+    <div class="check-item-admin">
+      <span class="check-item-name">${item.name}</span>
+      <button class="btn btn-sm btn-danger" onclick="deleteCheckItem('${item.id}')">Remove</button>
+    </div>
+  `).join('');
+}
+
+// ── ADD / DELETE SCOPES ──────────────────────────────────
+function showAddScope()  { document.getElementById('add-scope-form').style.display = 'block'; document.getElementById('new-scope-name').focus(); }
+function hideAddScope()  { document.getElementById('add-scope-form').style.display = 'none'; document.getElementById('new-scope-name').value = ''; document.getElementById('new-scope-room').value = ''; }
+
+async function addScope() {
+  const name = document.getElementById('new-scope-name').value.trim();
+  const room = document.getElementById('new-scope-room').value.trim();
+  if (!name) { showToast('Enter a microscope name'); return; }
+  const s = { id: 'sc-' + Date.now(), name, room: room || null };
+  await sb('cleaning_scopes', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify(s) });
+  scopes.push(s);
+  scopes.sort((a,b) => a.name.localeCompare(b.name));
+  hideAddScope();
+  renderScopeList();
+  renderLogForm();
+  renderHistory();
+  showToast('Microscope added ✓');
+}
+
+async function deleteScope(id) {
+  if (!confirm('Remove this microscope?')) return;
+  await sb(`cleaning_scopes?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' });
+  scopes = scopes.filter(s => s.id !== id);
+  renderScopeList();
+  renderLogForm();
+  renderHistory();
+  showToast('Microscope removed');
+}
+
+// ── ADD / DELETE CHECK ITEMS ─────────────────────────────
+function showAddCheckItem()  { document.getElementById('add-check-item-form').style.display = 'block'; document.getElementById('new-check-item').focus(); }
+function hideAddCheckItem()  { document.getElementById('add-check-item-form').style.display = 'none'; document.getElementById('new-check-item').value = ''; }
+
+async function addCheckItem() {
+  const name = document.getElementById('new-check-item').value.trim();
+  if (!name) { showToast('Enter an item name'); return; }
+  const item = { id: 'ci-' + Date.now(), name, sort_order: checkItems.length };
+  await sb('cleaning_check_items', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify(item) });
+  checkItems.push(item);
+  hideAddCheckItem();
+  renderCheckItemList();
+  renderLogForm();
+  showToast('Checklist item added ✓');
+}
+
+async function deleteCheckItem(id) {
+  if (!confirm('Remove this checklist item?')) return;
+  await sb(`cleaning_check_items?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' });
+  checkItems = checkItems.filter(i => i.id !== id);
+  renderCheckItemList();
+  renderLogForm();
+  showToast('Item removed');
+}
+
+// ── TABS ─────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('section-' + tab).classList.add('active');
+  if (tab === 'history') renderHistory();
+}
+
+// ── TOAST ─────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── PIN ENTER KEY ─────────────────────────────────────────
+document.getElementById('pin-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkPin();
+});
+
+init();
+</script>
+</body>
+</html>
